@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "driver/loopback.h"
 #include "net.h"
 #include "util.h"
 
@@ -15,25 +16,25 @@ static struct net_device* dev;
 /**
  * UT用のダミーネットワークデバイスを作成・登録する関数
  */
-struct net_device* dummy_init(void) {
-    struct net_device* dev;
-    dev = net_device_alloc();
-    if (!dev) {
-        errorf("net_device_alloc() failure");
-        return NULL;
-    }
-    dev->type = NET_DEVICE_TYPE_DUMMY;
-    dev->mtu = 128;
-    dev->hlen = 0;
-    dev->alen = 0;
-    if (net_device_register(dev) == -1) {
-        errorf("net_device_register() failure");
-        return NULL;
-    }
+// struct net_device* dummy_init(void) {
+//     struct net_device* dev;
+//     dev = net_device_alloc();
+//     if (!dev) {
+//         errorf("net_device_alloc() failure");
+//         return NULL;
+//     }
+//     dev->type = NET_DEVICE_TYPE_DUMMY;
+//     dev->mtu = 128;
+//     dev->hlen = 0;
+//     dev->alen = 0;
+//     if (net_device_register(dev) == -1) {
+//         errorf("net_device_register() failure");
+//         return NULL;
+//     }
 
-    infof("success, dev=%s", dev->name);
-    return dev;
-}
+//     infof("success, dev=%s", dev->name);
+//     return dev;
+// }
 
 static void on_signal(int signum) {
     (void)signum;
@@ -50,10 +51,10 @@ static int setup(void) {
         return -1;
     }
 
-    // ダミーネットワークデバイスのセットアップ
-    dev = dummy_init();
+    // ループバックデバイスのセットアップ
+    dev = loopback_init();
     if (!dev) {
-        errorf("dummy_init() failure");
+        errorf("loopback_init() failure");
         return -1;
     }
 

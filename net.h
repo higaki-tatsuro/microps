@@ -40,6 +40,19 @@ struct net_device {
         [NET_DEVICE_ADDR_LEN];  // データリンク層で利用するデバイスの物理アドレス
     uint8_t broadcast
         [NET_DEVICE_ADDR_LEN];  // データリンク層におけるブロードキャストアドレス
+    struct net_device_ops* ops;  // デバイス固有の制御ルーチンへのポインタ
+    void*
+        priv;  // デバイス固有のパラメータを保持するための領域。デバイスドライバが内部で利用する。
+};
+
+/**
+ * デバイスドライバに実装されている各種制御ルーチンへのアドレスを格納する構造体
+ */
+struct net_device_ops {
+    int (*open)(struct net_device* dev);
+    int (*close)(struct net_device* dev);
+    int (*output)(struct net_device* dev, uint16_t type, const uint8_t* data,
+                  size_t len, const void* dst);
 };
 
 extern struct net_device* net_device_alloc(void);
@@ -50,5 +63,7 @@ extern int net_device_output(struct net_device* dev, uint16_t type,
 extern int net_init(void);
 extern int net_run(void);
 extern int net_shutdown(void);
+extern int net_input(uint16_t type, const uint8_t* data, size_t len,
+                     struct net_device* dev);
 
 #endif
