@@ -23,6 +23,13 @@
 #define NET_DEVICE_IS_UP(x) ((x)->flags & NET_DEVICE_FLAG_UP)
 #define NET_DEVICE_STATE(x) (NET_DEVICE_IS_UP(x) ? "UP" : "DOWN")
 
+/*
+ * NOTE: use same value as the Ethernet types
+ */
+#define NET_PROTOCOL_TYPE_IP 0x0800
+#define NET_PROTOCOL_TYPE_ARP 0x0806
+#define NTT_PROTOCOL_TYPE_IPV6 0x86dd
+
 /**
  * ネットワークデバイスを管理する構造体。
  * 連結リスト構造を取る。
@@ -55,6 +62,20 @@ struct net_device_ops {
                   size_t len, const void* dst);
 };
 
+typedef void (*net_protocol_handler_t)(const uint8_t* data, size_t len,
+                                       struct net_device* dev);
+
+/**
+ * プロトコルを管理するための構造体。
+ * プロトコルスタックにこれら構造体のオブジェクトを追加することで、任意のプロトコルでスタックを構成できる。
+ */
+struct net_protocol {
+    struct net_protocol* next;
+    uint16_t type;  // プロトコル種別を表す値
+    net_protocol_handler_t
+        handler;  // プロトコルのパケットを処理する入力ハンドラの関数ポインタ
+};
+
 extern struct net_device* net_device_alloc(void);
 extern int net_device_register(struct net_device* dev);
 extern int net_device_output(struct net_device* dev, uint16_t type,
@@ -65,5 +86,6 @@ extern int net_run(void);
 extern int net_shutdown(void);
 extern int net_input(uint16_t type, const uint8_t* data, size_t len,
                      struct net_device* dev);
+extern int net_protocol_register(uint16_t type, net_protocol_handler_t handler);
 
 #endif

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ip.h"
+#include "net.h"
 #include "platform.h"
 #include "util.h"
 
@@ -12,6 +14,11 @@
  *       you need to protect these lists with a lock.
  */
 static struct net_device* devices;
+
+/**
+ * スタックに登録されているプロトコル群。
+ */
+static struct net_protocol* protocols;
 
 /**
  * ネットワークデバイスのオブジェクトを割り当てる。
@@ -120,13 +127,52 @@ int net_device_output(struct net_device* dev, uint16_t type,
     return 0;
 }
 
+/*
+ * プロトコルスタックに対してプロトコルを登録する。
+ * NOTE: must not be call after net_run()
+ */
+int net_protocol_register(uint16_t type, net_protocol_handler_t handler) {
+    struct net_protocol* proto;
+
+    // 重複チェック。同一のプロトコル種別のハンドラが既に登録されていた場合はエラー。
+    for (proto = protocols; proto; proto = proto->next) {
+        if (proto->type == proto->type) {
+            errorf("already registered, type=0x%04x", proto->type);
+            return -1;
+        }
+    }
+
+    proto = memory_alloc(sizeof(*proto));
+    if (!proto) {
+        errorf("memory_alloc() failure");
+        return -1;
+    }
+    proto->type = type;
+    proto->handler = handler;
+    proto->next = protocols;
+    protocols = proto;
+    infof("success, type=0x%04x", type);
+    return 0;
+}
+
 /**
  * デバイスドライバからプロトコルスタックへ入力パケットを渡す
  */
 int net_input(uint16_t type, const uint8_t* data, size_t len,
               struct net_device* dev) {
+    struct net_protocol* proto;
+
     debugf("dev=%s, type=0x%04x, len=%zu", dev->name, dev->type, len);
     debugdump(data, len);
+    // プロトコルスタックを走査し、一致するプロトコル種別のハンドラを起動する。
+    // 未対応のプロトコル種別を指定された際はパケットを破棄。
+    for (proto = protocols; proto; proto = proto->next) {
+        if (proto->type == type) {
+            proto->handler(data, len, dev);
+            return 0;
+        }
+    }
+
     return 0;
 }
 
@@ -134,6 +180,12 @@ int net_init(void) {
     infof("initialize...");
     if (platform_init() == -1) {
         errorf("platform_init() failure");
+        return -1;
+    }
+
+    // プロトコルスタックにIPを追加
+    if (ip_init() == -1) {
+        errorf("ip_init() failure");
         return -1;
     }
 
