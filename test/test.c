@@ -1,26 +1,22 @@
+#include "test.h"
+
+#include <errno.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
-#include <errno.h>
 #include <unistd.h>
 
-#include "util.h"
 #include "net.h"
-
-#include "test.h"
+#include "util.h"
 
 static volatile sig_atomic_t terminate;
 
-static void
-on_signal(int signum)
-{
+static void on_signal(int signum) {
     (void)signum;
     terminate = 1;
 }
 
-static int
-setup(void)
-{
+static int setup(void) {
     struct sigaction sa = {0};
 
     sa.sa_handler = on_signal;
@@ -40,9 +36,7 @@ setup(void)
     return 0;
 }
 
-static int
-cleanup(void)
-{
+static int cleanup(void) {
     infof("cleanup protocol stack...");
     if (net_shutdown() == -1) {
         errorf("net_shutdown() failure");
@@ -51,15 +45,19 @@ cleanup(void)
     return 0;
 }
 
-static int
-app_main(void)
-{
+static int app_main(void) {
+    debugf("precc Ctrl+C terminate");
+    while (!terminate) {
+        sleep(1);
+    }
+    debugf("terminate");
     return 0;
 }
 
-int
-main(void)
-{
+/**
+ * テストプログラムのメイン関数
+ */
+int main(void) {
     int ret;
 
     if (setup() == -1) {

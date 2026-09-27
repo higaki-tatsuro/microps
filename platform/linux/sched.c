@@ -1,25 +1,21 @@
+#include <errno.h>
 #include <pthread.h>
 #include <time.h>
-#include <errno.h>
 
 #include "platform.h"
 
 static lock_t lock = LOCK_INITIALIZER;
-static struct sched_task *tasks; /* sleep tasks */
+static struct sched_task* tasks; /* sleep tasks */
 
-static void
-tasks_add(struct sched_task *task)
-{
+static void tasks_add(struct sched_task* task) {
     lock_acquire(&lock);
     task->next = tasks;
     tasks = task;
     lock_release(&lock);
 }
 
-static void
-tasks_del(struct sched_task *task)
-{
-    struct sched_task *entry;
+static void tasks_del(struct sched_task* task) {
+    struct sched_task* entry;
 
     lock_acquire(&lock);
     if (tasks == task) {
@@ -38,9 +34,10 @@ tasks_del(struct sched_task *task)
     lock_release(&lock);
 }
 
-int
-sched_task_init(struct sched_task *task)
-{
+/**
+ * タスク構造体を初期化する。
+ */
+int sched_task_init(struct sched_task* task) {
     task->next = NULL;
     pthread_cond_init(&task->cond, NULL);
     task->interrupted = 0;
@@ -48,18 +45,21 @@ sched_task_init(struct sched_task *task)
     return 0;
 }
 
-int
-sched_task_destroy(struct sched_task *task)
-{
+/**
+ * タスク構造体を破棄する。
+ */
+int sched_task_destroy(struct sched_task* task) {
     if (task->wc) {
         return -1;
     }
     return pthread_cond_destroy(&task->cond);
 }
 
-int
-sched_task_sleep(struct sched_task *task, lock_t *lock, const struct timespec *abstime)
-{
+/**
+ * タスクを待機状態に遷移させる。
+ */
+int sched_task_sleep(struct sched_task* task, lock_t* lock,
+                     const struct timespec* abstime) {
     int ret;
 
     if (task->interrupted) {
@@ -85,16 +85,12 @@ sched_task_sleep(struct sched_task *task, lock_t *lock, const struct timespec *a
     return ret;
 }
 
-int
-sched_task_wakeup(struct sched_task *task)
-{
+int sched_task_wakeup(struct sched_task* task) {
     return pthread_cond_broadcast(&task->cond);
 }
 
-static void
-sched_irq_handler(unsigned int irq, void *arg)
-{
-    struct sched_task *task;
+static void sched_irq_handler(unsigned int irq, void* arg) {
+    struct sched_task* task;
 
     (void)irq;
     (void)arg;
@@ -108,22 +104,16 @@ sched_irq_handler(unsigned int irq, void *arg)
     lock_release(&lock);
 }
 
-int
-sched_init(void)
-{
+int sched_init(void) {
     return intr_register(INTR_IRQ_USER, sched_irq_handler, 0, NULL);
 }
 
-int
-sched_run(void)
-{
+int sched_run(void) {
     /* do nothing */
     return 0;
 }
 
-int
-sched_shutdown(void)
-{
+int sched_shutdown(void) {
     /* do nothing */
     return 0;
 }
