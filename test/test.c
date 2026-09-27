@@ -10,6 +10,30 @@
 #include "util.h"
 
 static volatile sig_atomic_t terminate;
+static struct net_device* dev;
+
+/**
+ * UT用のダミーネットワークデバイスを作成・登録する関数
+ */
+struct net_device* dummy_init(void) {
+    struct net_device* dev;
+    dev = net_device_alloc();
+    if (!dev) {
+        errorf("net_device_alloc() failure");
+        return NULL;
+    }
+    dev->type = NET_DEVICE_TYPE_DUMMY;
+    dev->mtu = 128;
+    dev->hlen = 0;
+    dev->alen = 0;
+    if (net_device_register(dev) == -1) {
+        errorf("net_device_register() failure");
+        return NULL;
+    }
+
+    infof("success, dev=%s", dev->name);
+    return dev;
+}
 
 static void on_signal(int signum) {
     (void)signum;
@@ -19,11 +43,20 @@ static void on_signal(int signum) {
 static int setup(void) {
     struct sigaction sa = {0};
 
+    // シグナルハンドラの登録
     sa.sa_handler = on_signal;
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         errorf("sigaction() %s", strerror(errno));
         return -1;
     }
+
+    // ダミーネットワークデバイスのセットアップ
+    dev = dummy_init();
+    if (!dev) {
+        errorf("dummy_init() failure");
+        return -1;
+    }
+
     infof("setup protocol stack...");
     if (net_init() == -1) {
         errorf("net_init() failure");
@@ -48,6 +81,11 @@ static int cleanup(void) {
 static int app_main(void) {
     debugf("precc Ctrl+C terminate");
     while (!terminate) {
+        if (net_device_output(dev, 0x0800, test_data, sizeof(test_data),
+                              NULL) == -1) {
+            errorf("net_device_output() failure");
+            break;
+        }
         sleep(1);
     }
     debugf("terminate");

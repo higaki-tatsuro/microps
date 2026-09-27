@@ -23,17 +23,23 @@
 #define NET_DEVICE_IS_UP(x) ((x)->flags & NET_DEVICE_FLAG_UP)
 #define NET_DEVICE_STATE(x) (NET_DEVICE_IS_UP(x) ? "UP" : "DOWN")
 
+/**
+ * ネットワークデバイスを管理する構造体。
+ * 連結リスト構造を取る。
+ */
 struct net_device {
     struct net_device* next;
-    unsigned int index;
-    char name[IFNAMSIZ];
-    uint16_t type;
-    uint16_t mtu;
-    uint16_t flags;
-    uint16_t hlen;
-    uint16_t alen;
-    uint8_t addr[NET_DEVICE_ADDR_LEN];
-    uint8_t broadcast[NET_DEVICE_ADDR_LEN];
+    unsigned int index;   // デバイスを一意に識別するインデックス番号
+    char name[IFNAMSIZ];  // デバイス名
+    uint16_t type;        // デバイスタイプ
+    uint16_t mtu;         // 最大伝送単位「MTU」の定義
+    uint16_t flags;       // デバイスの特性と状態を示すフラグ
+    uint16_t hlen;        // データリンクのヘッダ長
+    uint16_t alen;        // データリンクのアドレス長
+    uint8_t addr
+        [NET_DEVICE_ADDR_LEN];  // データリンク層で利用するデバイスの物理アドレス
+    uint8_t broadcast
+        [NET_DEVICE_ADDR_LEN];  // データリンク層におけるブロードキャストアドレス
 };
 
 extern struct net_device* net_device_alloc(void);
